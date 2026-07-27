@@ -1,8 +1,8 @@
 FROM ghcr.io/its-me/debian:latest AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
-    git \
     build-essential \
     pkg-config \
     libssl-dev \
@@ -11,12 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-ARG UV_VERSION=latest
-RUN if [ "$UV_VERSION" = "latest" ]; then \
-        git clone --depth 1 https://github.com/astral-sh/uv.git /src/uv; \
-    else \
-        git clone --depth 1 --branch "$UV_VERSION" https://github.com/astral-sh/uv.git /src/uv; \
-    fi
+# Always build from the source tarball of the latest release, not a git clone,
+# so the build is pinned to an immutable, tagged release artifact.
+RUN tag=$(curl --proto '=https' --tlsv1.2 -fsSL https://api.github.com/repos/astral-sh/uv/releases/latest \
+        | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
+    curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://github.com/astral-sh/uv/releases/download/${tag}/source.tar.gz" \
+        -o /tmp/uv-src.tar.gz; \
+    mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1; \
+    rm -f /tmp/uv-src.tar.gz
 
 WORKDIR /src/uv
 RUN cargo build --release --locked -p uv
@@ -28,7 +31,7 @@ ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.source=https://github.com/its-me/image.debian
 LABEL org.opencontainers.image.title="debian-uv"
-LABEL org.opencontainers.image.description="Extends the debian-python image with uv, built from source against a Rust toolchain in a separate builder stage"
+LABEL org.opencontainers.image.description="Extends the debian-python image with uv, built from the latest release's source tarball against a Rust toolchain in a separate builder stage"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.authors="Sergey Kanafyev <sergeykanafyev@gmail.com>"
 LABEL org.opencontainers.image.base.name="ghcr.io/its-me/debian:python"
