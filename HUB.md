@@ -34,11 +34,11 @@ docker pull 1tsme/debian:uv
 
 | Tag | Description |
 |-----|-------------|
-| `latest` | Latest base image |
+| `latest` | Base image |
 | `YYMMDD` | Date-stamped base image |
-| `python` | Latest Python image |
+| `python` | Python image |
 | `python-YYMMDD` | Date-stamped Python image |
-| `uv` | Latest uv image |
+| `uv` | uv image |
 | `uv-YYMMDD` | Date-stamped uv image |
 
 Source: https://github.com/its-me/image.debian

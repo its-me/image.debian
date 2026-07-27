@@ -2,6 +2,12 @@
 
 Debian container images, built and published daily.
 
+## Workflow
+
+- Builds trigger on push to `main`, a daily schedule, and manual dispatch — there's no upstream release to tie a version to, so every trigger rebuilds and republishes
+- Each image supports 8 platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v5`, `linux/386`, `linux/ppc64le`, `linux/riscv64`, `linux/s390x` — matching the architectures published for the upstream `debian:stable-slim` base image
+- Each image carries an `org.opencontainers.image.version` label set to a hash of its installed Debian packages (visible via `docker inspect`), so two pulls of the same tag can be compared without a separate versioned tag
+
 ## Images
 
 ### Base (`latest`)
@@ -38,11 +44,11 @@ docker pull ghcr.io/its-me/debian:uv
 
 | Tag | Description |
 |-----|-------------|
-| `latest` | Latest base image |
+| `latest` | Base image |
 | `YYMMDD` | Date-stamped base image |
-| `python` | Latest Python image |
+| `python` | Python image |
 | `python-YYMMDD` | Date-stamped Python image |
-| `uv` | Latest uv image |
+| `uv` | uv image |
 | `uv-YYMMDD` | Date-stamped uv image |
 
 ## Registries
