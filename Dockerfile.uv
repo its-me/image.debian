@@ -8,17 +8,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+# rustup's own architecture detection can't be trusted under buildx emulation
+# (e.g. linux/386 reports uname -m as x86_64), so the host triple is pinned
+# explicitly from TARGETARCH/TARGETVARIANT instead.
+ARG TARGETARCH
+ARG TARGETVARIANT
+RUN set -eu; \
+    case "${TARGETARCH}-${TARGETVARIANT}" in \
+        amd64-)   rust_host=x86_64-unknown-linux-gnu ;; \
+        arm64-)   rust_host=aarch64-unknown-linux-gnu ;; \
+        arm-v7)   rust_host=armv7-unknown-linux-gnueabihf ;; \
+        386-)     rust_host=i686-unknown-linux-gnu ;; \
+        ppc64le-) rust_host=powerpc64le-unknown-linux-gnu ;; \
+        riscv64-) rust_host=riscv64gc-unknown-linux-gnu ;; \
+        s390x-)   rust_host=s390x-unknown-linux-gnu ;; \
+        *) echo "unsupported platform: TARGETARCH=$TARGETARCH TARGETVARIANT=$TARGETVARIANT" >&2; exit 1 ;; \
+    esac; \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+        | sh -s -- -y --default-toolchain stable --profile minimal --default-host "$rust_host"
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Always build from the source tarball of the latest release, not a git clone,
-# so the build is pinned to an immutable, tagged release artifact.
+# so the build is pinned to an immutable, tagged release artifact. Each step is
+# chained with && so a failed download aborts the build immediately instead of
+# silently proceeding with an empty/corrupt source tree.
 RUN tag=$(curl --proto '=https' --tlsv1.2 -fsSL https://api.github.com/repos/astral-sh/uv/releases/latest \
-        | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/'); \
+        | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/') && \
     curl --proto '=https' --tlsv1.2 -fsSL \
         "https://github.com/astral-sh/uv/releases/download/${tag}/source.tar.gz" \
-        -o /tmp/uv-src.tar.gz; \
-    mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1; \
+        -o /tmp/uv-src.tar.gz && \
+    mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1 && \
     rm -f /tmp/uv-src.tar.gz
 
 WORKDIR /src/uv
