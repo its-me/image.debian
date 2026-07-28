@@ -1,5 +1,7 @@
-FROM ghcr.io/its-me/debian:latest
+ARG BASE_TAG=latest
+FROM ghcr.io/its-me/debian:${BASE_TAG}
 
+ARG BASE_TAG
 ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.source=https://github.com/its-me/image.debian
@@ -7,7 +9,7 @@ LABEL org.opencontainers.image.title="debian-python"
 LABEL org.opencontainers.image.description="Extends the debian base image with python3 and pip"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.authors="Sergey Kanafyev <sergeykanafyev@gmail.com>"
-LABEL org.opencontainers.image.base.name="ghcr.io/its-me/debian:latest"
+LABEL org.opencontainers.image.base.name="ghcr.io/its-me/debian:${BASE_TAG}"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \

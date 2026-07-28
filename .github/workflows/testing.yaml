@@ -1,15 +1,16 @@
-name: Build and deploy
+name: testing
 
 on:
-  push:
-    branches:
-      - main
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
 
 env:
   REPOSITORY: debian
+  SUITE: testing
+  BASE_TAG: testing
+  PYTHON_TAG: testing-python
+  UV_TAG: testing-uv
 
 jobs:
   resolve-version-base:
@@ -25,7 +26,8 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile)
+          template=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile)
+          image=${template//\$\{SUITE\}/$SUITE}
           docker pull "$image"
           version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
@@ -70,7 +72,9 @@ jobs:
         with:
           context: .
           platforms: ${{ matrix.platform }}
-          build-args: VERSION=${{ needs.resolve-version-base.outputs.version }}
+          build-args: |
+            SUITE=${{ env.SUITE }}
+            VERSION=${{ needs.resolve-version-base.outputs.version }}
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
@@ -121,7 +125,7 @@ jobs:
 
       - name: Resolve tags
         id: tags
-        run: echo "list=latest $(date -u +%y%m%d)" >> "$GITHUB_OUTPUT"
+        run: echo "list=$BASE_TAG $BASE_TAG-$(date -u +%y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Create manifest
         env:
@@ -195,7 +199,8 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.python)
+          template=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.python)
+          image=${template//\$\{BASE_TAG\}/$BASE_TAG}
           docker pull "$image"
           version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
@@ -241,7 +246,9 @@ jobs:
           context: .
           file: Dockerfile.python
           platforms: ${{ matrix.platform }}
-          build-args: VERSION=${{ needs.resolve-version-python.outputs.version }}
+          build-args: |
+            BASE_TAG=${{ env.BASE_TAG }}
+            VERSION=${{ needs.resolve-version-python.outputs.version }}
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
@@ -292,7 +299,7 @@ jobs:
 
       - name: Resolve tags
         id: tags
-        run: echo "list=python python-$(date -u +%y%m%d)" >> "$GITHUB_OUTPUT"
+        run: echo "list=$PYTHON_TAG $PYTHON_TAG-$(date -u +%y%m%d)" >> "$GITHUB_OUTPUT"
 
       - name: Create manifest
         env:
@@ -378,7 +385,8 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.uv)
+          template=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.uv)
+          image=${template//\$\{PYTHON_TAG\}/$PYTHON_TAG}
           docker pull "$image"
           version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
@@ -424,6 +432,8 @@ jobs:
           file: Dockerfile.uv
           platforms: ${{ matrix.platform }}
           build-args: |
+            BASE_TAG=${{ env.BASE_TAG }}
+            PYTHON_TAG=${{ env.PYTHON_TAG }}
             VERSION=${{ needs.resolve-version-uv.outputs.version }}
             UV_VERSION=${{ needs.resolve-version-uv.outputs.uv_version }}
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
@@ -478,7 +488,7 @@ jobs:
         id: tags
         env:
           UV_VERSION: ${{ needs.resolve-version-uv.outputs.uv_version }}
-        run: echo "list=uv uv-$(date -u +%y%m%d) uv-$UV_VERSION" >> "$GITHUB_OUTPUT"
+        run: echo "list=$UV_TAG $UV_TAG-$(date -u +%y%m%d) $UV_TAG-$UV_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create manifest
         env:
