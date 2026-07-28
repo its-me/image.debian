@@ -22,17 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Build image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          load: true
-          tags: debian-base
-
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-base sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
+          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile)
+          docker pull "$image"
+          version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-base:
@@ -184,6 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     outputs:
       version: ${{ steps.version.outputs.value }}
     steps:
@@ -196,18 +192,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: Dockerfile.python
-          load: true
-          tags: debian-python
-
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-python sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
+          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.python)
+          docker pull "$image"
+          version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-python:
@@ -360,6 +350,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: read
     outputs:
       version: ${{ steps.version.outputs.value }}
       uv_version: ${{ steps.uv-release.outputs.value }}
@@ -384,19 +375,12 @@ jobs:
               | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
           echo "value=$tag" >> "$GITHUB_OUTPUT"
 
-      - name: Build image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: Dockerfile.uv
-          load: true
-          tags: debian-uv
-          build-args: UV_VERSION=${{ steps.uv-release.outputs.value }}
-
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-uv sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
+          image=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile.uv)
+          docker pull "$image"
+          version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-uv:
