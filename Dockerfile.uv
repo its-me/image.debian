@@ -41,7 +41,15 @@ RUN tag=$(curl --proto '=https' --tlsv1.2 -fsSL https://api.github.com/repos/ast
     rm -f /tmp/uv-src.tar.gz
 
 WORKDIR /src/uv
-RUN cargo build --release --locked -p uv
+# uv's release profile enables fat LTO, which needs far more address space than
+# a 32-bit build (linux/arm/v7, linux/386) can offer under emulation, aborting
+# rustc-LLVM with an out-of-memory error. LTO is only disabled on those two
+# 32-bit targets; the 64-bit targets keep fat LTO's runtime benefit.
+RUN set -eu; \
+    case "${TARGETARCH}-${TARGETVARIANT}" in \
+        arm-v7|386-) export CARGO_PROFILE_RELEASE_LTO=off ;; \
+    esac; \
+    cargo build --release --locked -p uv
 
 
 FROM ghcr.io/its-me/debian:python
