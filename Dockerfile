@@ -10,6 +10,6 @@ LABEL org.opencontainers.image.description="Minimal debian:${SUITE}-slim image w
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.authors="Sergey Kanafyev <sergeykanafyev@gmail.com>"
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
