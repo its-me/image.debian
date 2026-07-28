@@ -45,7 +45,6 @@ jobs:
           - { platform: linux/amd64,   runner: ubuntu-latest,    qemu: false }
           - { platform: linux/arm64,   runner: ubuntu-24.04-arm, qemu: false }
           - { platform: linux/arm/v7,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/arm/v5,  runner: ubuntu-24.04-arm, qemu: true  }
           - { platform: linux/386,     runner: ubuntu-latest,    qemu: true  }
           - { platform: linux/ppc64le, runner: ubuntu-latest,    qemu: true  }
           - { platform: linux/riscv64, runner: ubuntu-latest,    qemu: true  }
@@ -218,7 +217,6 @@ jobs:
           - { platform: linux/amd64,   runner: ubuntu-latest,    qemu: false }
           - { platform: linux/arm64,   runner: ubuntu-24.04-arm, qemu: false }
           - { platform: linux/arm/v7,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/arm/v5,  runner: ubuntu-24.04-arm, qemu: true  }
           - { platform: linux/386,     runner: ubuntu-latest,    qemu: true  }
           - { platform: linux/ppc64le, runner: ubuntu-latest,    qemu: true  }
           - { platform: linux/riscv64, runner: ubuntu-latest,    qemu: true  }
