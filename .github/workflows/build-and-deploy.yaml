@@ -32,7 +32,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-base dpkg -l | sha256sum | cut -d' ' -f1)
+          version=$(docker run --rm debian-base sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-base:
@@ -207,7 +207,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-python sh -c 'dpkg -l && python3 --version' | sha256sum | cut -d' ' -f1)
+          version=$(docker run --rm debian-python sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-python:
@@ -362,6 +362,7 @@ jobs:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.value }}
+      uv_version: ${{ steps.uv-release.outputs.value }}
     steps:
       - uses: actions/checkout@v7
 
@@ -372,6 +373,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Resolved once here and passed as a build-arg to every matrix build, so
+      # all architectures build the exact same uv release instead of each of
+      # the 7 per-arch builds independently (and possibly inconsistently)
+      # resolving "latest" on its own.
+      - name: Resolve uv release
+        id: uv-release
+        run: |
+          tag=$(curl --proto '=https' --tlsv1.2 -fsSL https://api.github.com/repos/astral-sh/uv/releases/latest \
+              | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+          echo "value=$tag" >> "$GITHUB_OUTPUT"
+
       - name: Build image
         uses: docker/build-push-action@v7
         with:
@@ -379,11 +391,12 @@ jobs:
           file: Dockerfile.uv
           load: true
           tags: debian-uv
+          build-args: UV_VERSION=${{ steps.uv-release.outputs.value }}
 
       - name: Resolve version
         id: version
         run: |
-          version=$(docker run --rm debian-uv sh -c 'dpkg -l && uv --version' | sha256sum | cut -d' ' -f1)
+          version=$(docker run --rm debian-uv sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
   build-uv:
@@ -426,7 +439,9 @@ jobs:
           context: .
           file: Dockerfile.uv
           platforms: ${{ matrix.platform }}
-          build-args: VERSION=${{ needs.resolve-version-uv.outputs.version }}
+          build-args: |
+            VERSION=${{ needs.resolve-version-uv.outputs.version }}
+            UV_VERSION=${{ needs.resolve-version-uv.outputs.uv_version }}
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
@@ -451,7 +466,7 @@ jobs:
 
   assemble-uv:
     name: Assemble uv in GHCR
-    needs: build-uv
+    needs: [build-uv, resolve-version-uv]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -477,7 +492,9 @@ jobs:
 
       - name: Resolve tags
         id: tags
-        run: echo "list=uv uv-$(date -u +%y%m%d)" >> "$GITHUB_OUTPUT"
+        env:
+          UV_VERSION: ${{ needs.resolve-version-uv.outputs.uv_version }}
+        run: echo "list=uv uv-$(date -u +%y%m%d) uv-$UV_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Create manifest
         env:

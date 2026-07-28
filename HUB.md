@@ -40,5 +40,6 @@ docker pull 1tsme/debian:uv
 | `python-YYMMDD` | Date-stamped Python image |
 | `uv` | uv image |
 | `uv-YYMMDD` | Date-stamped uv image |
+| `uv-<uv version>` | uv image, stamped with the bundled uv release (e.g. `uv-0.11.32`) |
 
 Source: https://github.com/its-me/image.debian

@@ -28,14 +28,15 @@ RUN set -eu; \
         | sh -s -- -y --default-toolchain stable --profile minimal --default-host "$rust_host"
 ENV PATH="/root/.cargo/bin:${PATH}"
 
-# Always build from the source tarball of the latest release, not a git clone,
-# so the build is pinned to an immutable, tagged release artifact. Each step is
-# chained with && so a failed download aborts the build immediately instead of
-# silently proceeding with an empty/corrupt source tree.
-RUN tag=$(curl --proto '=https' --tlsv1.2 -fsSL https://api.github.com/repos/astral-sh/uv/releases/latest \
-        | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/') && \
-    curl --proto '=https' --tlsv1.2 -fsSL \
-        "https://github.com/astral-sh/uv/releases/download/${tag}/source.tar.gz" \
+# UV_VERSION is resolved once in the resolve-version-uv workflow job and passed
+# to every matrix build, so all architectures build the exact same release
+# instead of each of the 7 per-arch builds independently (and possibly
+# inconsistently) resolving "latest" on its own. Built from the release's
+# source tarball, not a git clone, so the build is pinned to an immutable,
+# tagged release artifact.
+ARG UV_VERSION
+RUN curl --proto '=https' --tlsv1.2 -fsSL \
+        "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/source.tar.gz" \
         -o /tmp/uv-src.tar.gz && \
     mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1 && \
     rm -f /tmp/uv-src.tar.gz
