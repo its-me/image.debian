@@ -5,7 +5,8 @@ Debian container images, built and published daily.
 ## Workflow
 
 - Builds trigger on push to `main`, a daily schedule, and manual dispatch — there's no upstream release to tie a version to, so every trigger rebuilds and republishes
-- Each image supports 8 platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v5`, `linux/386`, `linux/ppc64le`, `linux/riscv64`, `linux/s390x` — matching the architectures published for the upstream `debian:stable-slim` base image
+- The base and python images support 8 platforms: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v5`, `linux/386`, `linux/ppc64le`, `linux/riscv64`, `linux/s390x` — matching the architectures published for the upstream `debian:stable-slim` base image
+- The uv image supports the same 8 platforms except `linux/arm/v5`, since Rust has no ARMv5 target and `uv` is built from source
 - Each image carries an `org.opencontainers.image.version` label set to a hash of its installed Debian packages (visible via `docker inspect`), so two pulls of the same tag can be compared without a separate versioned tag
 
 ## Images
