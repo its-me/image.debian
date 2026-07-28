@@ -1,4 +1,4 @@
-<!-- Debian images across stable, testing, unstable, oldstable, and oldoldstable, with optional Python and uv layers. Updated daily. -->
+<!-- Debian images across 5 suites, with optional Python and uv layers. Updated daily. -->
 
 # Debian Container Images
 
