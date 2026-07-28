@@ -3,54 +3,59 @@ FROM ghcr.io/its-me/debian:latest AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
-    build-essential \
-    pkg-config \
-    libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# rustup's own architecture detection can't be trusted under buildx emulation
-# (e.g. linux/386 reports uname -m as x86_64), so the host triple is pinned
-# explicitly from TARGETARCH/TARGETVARIANT instead.
 ARG TARGETARCH
 ARG TARGETVARIANT
-RUN set -eu; \
-    case "${TARGETARCH}-${TARGETVARIANT}" in \
-        amd64-)   rust_host=x86_64-unknown-linux-gnu ;; \
-        arm64-)   rust_host=aarch64-unknown-linux-gnu ;; \
-        arm-v7)   rust_host=armv7-unknown-linux-gnueabihf ;; \
-        386-)     rust_host=i686-unknown-linux-gnu ;; \
-        ppc64le-) rust_host=powerpc64le-unknown-linux-gnu ;; \
-        riscv64-) rust_host=riscv64gc-unknown-linux-gnu ;; \
-        s390x-)   rust_host=s390x-unknown-linux-gnu ;; \
-        *) echo "unsupported platform: TARGETARCH=$TARGETARCH TARGETVARIANT=$TARGETVARIANT" >&2; exit 1 ;; \
-    esac; \
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
-        | sh -s -- -y --default-toolchain stable --profile minimal --default-host "$rust_host"
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-# UV_VERSION is resolved once in the resolve-version-uv workflow job and passed
-# to every matrix build, so all architectures build the exact same release
-# instead of each of the 7 per-arch builds independently (and possibly
-# inconsistently) resolving "latest" on its own. Built from the release's
-# source tarball, not a git clone, so the build is pinned to an immutable,
-# tagged release artifact.
 ARG UV_VERSION
-RUN curl --proto '=https' --tlsv1.2 -fsSL \
-        "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/source.tar.gz" \
-        -o /tmp/uv-src.tar.gz && \
-    mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1 && \
-    rm -f /tmp/uv-src.tar.gz
 
-WORKDIR /src/uv
-# uv's release profile enables fat LTO, which needs far more address space than
-# a 32-bit build (linux/arm/v7, linux/386) can offer under emulation, aborting
-# rustc-LLVM with an out-of-memory error. LTO is only disabled on those two
-# 32-bit targets; the 64-bit targets keep fat LTO's runtime benefit.
+# uv publishes prebuilt binaries for every platform built here. Compiling from
+# source is kept only where QEMU-emulated rustc is fast enough to be
+# practical (amd64/arm64/arm/v7/386, ~15 min); ppc64le, riscv64, and s390x
+# take 4-6+ hours to compile under emulation (riscv64 hit GitHub Actions'
+# 6-hour job limit and was cancelled outright), so those download the
+# official release binary instead.
 RUN set -eu; \
     case "${TARGETARCH}-${TARGETVARIANT}" in \
-        arm-v7|386-) export CARGO_PROFILE_RELEASE_LTO=off ;; \
+        ppc64le-) asset=powerpc64le-unknown-linux-gnu ;; \
+        riscv64-) asset=riscv64gc-unknown-linux-gnu ;; \
+        s390x-)   asset=s390x-unknown-linux-gnu ;; \
+        *)        asset="" ;; \
     esac; \
-    cargo build --release --locked -p uv
+    if [ -n "$asset" ]; then \
+        curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${asset}.tar.gz" \
+            -o /tmp/uv.tar.gz && \
+        mkdir -p /tmp/uv-bin && tar -xzf /tmp/uv.tar.gz -C /tmp/uv-bin --strip-components=1 && \
+        mv /tmp/uv-bin/uv /usr/local/bin/uv && \
+        rm -rf /tmp/uv.tar.gz /tmp/uv-bin; \
+    else \
+        apt-get update && apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            libssl-dev \
+            && rm -rf /var/lib/apt/lists/*; \
+        case "${TARGETARCH}-${TARGETVARIANT}" in \
+            amd64-) rust_host=x86_64-unknown-linux-gnu ;; \
+            arm64-) rust_host=aarch64-unknown-linux-gnu ;; \
+            arm-v7) rust_host=armv7-unknown-linux-gnueabihf ;; \
+            386-)   rust_host=i686-unknown-linux-gnu ;; \
+            *) echo "unsupported platform: TARGETARCH=$TARGETARCH TARGETVARIANT=$TARGETVARIANT" >&2; exit 1 ;; \
+        esac; \
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --default-toolchain stable --profile minimal --default-host "$rust_host"; \
+        export PATH="/root/.cargo/bin:${PATH}"; \
+        curl --proto '=https' --tlsv1.2 -fsSL \
+            "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/source.tar.gz" \
+            -o /tmp/uv-src.tar.gz && \
+        mkdir -p /src/uv && tar -xzf /tmp/uv-src.tar.gz -C /src/uv --strip-components=1 && \
+        rm -f /tmp/uv-src.tar.gz; \
+        case "${TARGETARCH}-${TARGETVARIANT}" in \
+            arm-v7|386-) export CARGO_PROFILE_RELEASE_LTO=off ;; \
+        esac; \
+        cd /src/uv && cargo build --release --locked -p uv; \
+        cp /src/uv/target/release/uv /usr/local/bin/uv; \
+    fi
 
 
 FROM ghcr.io/its-me/debian:python
@@ -59,12 +64,12 @@ ARG VERSION
 LABEL org.opencontainers.image.version=$VERSION
 LABEL org.opencontainers.image.source=https://github.com/its-me/image.debian
 LABEL org.opencontainers.image.title="debian-uv"
-LABEL org.opencontainers.image.description="Extends the debian-python image with uv, built from the latest release's source tarball against a Rust toolchain in a separate builder stage"
+LABEL org.opencontainers.image.description="Extends the debian-python image with uv — built from the latest release's source tarball on architectures where emulated compilation is practical, and installed from the official prebuilt release binary elsewhere"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.authors="Sergey Kanafyev <sergeykanafyev@gmail.com>"
 LABEL org.opencontainers.image.base.name="ghcr.io/its-me/debian:python"
 
-COPY --from=builder /src/uv/target/release/uv /usr/local/bin/uv
+COPY --from=builder /usr/local/bin/uv /usr/local/bin/uv
 
 RUN uv --version
 

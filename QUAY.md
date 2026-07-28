@@ -22,7 +22,7 @@ docker pull quay.io/itsme/debian:python
 
 ### uv (`uv`)
 
-Extends the Python image with [uv](https://github.com/astral-sh/uv), built from source against a Rust toolchain in a separate builder stage. Built for 7 of the 8 platforms above — `linux/arm/v5` is excluded because Rust has no ARMv5 target.
+Extends the Python image with [uv](https://github.com/astral-sh/uv) — built from source on `linux/amd64`, `linux/arm64`, `linux/arm/v7`, and `linux/386`, and installed from the official prebuilt release binary on `linux/ppc64le`, `linux/riscv64`, and `linux/s390x`, where compiling under QEMU emulation is impractically slow (hours, not minutes). Built for 7 of the 8 platforms above — `linux/arm/v5` is excluded because Rust has no ARMv5 target and uv publishes no binary for it either.
 
 ```
 docker pull quay.io/itsme/debian:uv
