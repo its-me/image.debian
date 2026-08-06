@@ -6,7 +6,7 @@ Debian container images built on the official `slim` variants, published daily, 
 
 - Each suite has its own workflow (`.github/workflows/{stable,testing,unstable,oldstable,oldoldstable}.yaml`), all built from the same three Dockerfiles — the suite/base image tag is passed in as a build-arg (`SUITE`, `BASE_TAG`, `PYTHON_TAG`) rather than hardcoded
 - There's no upstream release to tie a version to, so every trigger rebuilds and republishes
-- Each suite only builds the platforms Docker Hub actually publishes for `debian:<suite>-slim` — see the table below
+- The build matrix for each suite is resolved from `debian:<suite>-slim`'s upstream manifest at run time rather than hardcoded — see [Platforms](#platforms)
 - Each image carries an `org.opencontainers.image.version` label set to the underlying Debian release codename (e.g. `trixie`, visible via `docker inspect`)
 
 ## Images
@@ -55,17 +55,9 @@ docker pull ghcr.io/its-me/debian:oldstable-uv
 docker pull ghcr.io/its-me/debian:oldoldstable-uv
 ```
 
-## Suites and platforms
+## Platforms
 
-| Suite | Base & Python platforms | uv platforms |
-|-------|--------------------------|---------------|
-| `stable` | 8: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v5`, `linux/386`, `linux/ppc64le`, `linux/riscv64`, `linux/s390x` | 7 (no `arm/v5`) |
-| `testing` | 7 (no `arm/v5` — not published upstream) | 7 (same) |
-| `unstable` | 7 (no `arm/v5` — not published upstream) | 7 (same) |
-| `oldstable` | 7 (no `riscv64` — not published upstream) | 6 (no `arm/v5`, no `riscv64`) |
-| `oldoldstable` | 4: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/386` | 4 (same) |
-
-Platform sets are trimmed per suite to match whatever `debian:<suite>-slim` actually publishes on Docker Hub — building a platform that upstream doesn't publish fails the whole matrix.
+Each suite builds whatever platforms Docker Hub currently publishes for `debian:<suite>-slim`, resolved from the upstream manifest at build time rather than hardcoded — Debian's per-suite architecture support shifts as its release cycle rolls forward, especially for `oldstable` and `oldoldstable`. The uv image additionally always excludes `linux/arm/v5`, since neither Rust nor uv's release binaries target it.
 
 ## Tags
 

@@ -46,13 +46,7 @@ docker pull 1tsme/debian:oldoldstable-uv
 
 ## Platforms
 
-| Suite | Base & Python platforms | uv platforms |
-|-------|--------------------------|---------------|
-| `stable` | 8: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/arm/v5`, `linux/386`, `linux/ppc64le`, `linux/riscv64`, `linux/s390x` | 7 (no `arm/v5`) |
-| `testing` | 7 (no `arm/v5` — not published upstream) | 7 (same) |
-| `unstable` | 7 (no `arm/v5` — not published upstream) | 7 (same) |
-| `oldstable` | 7 (no `riscv64` — not published upstream) | 6 (no `arm/v5`, no `riscv64`) |
-| `oldoldstable` | 4: `linux/amd64`, `linux/arm64`, `linux/arm/v7`, `linux/386` | 4 (same) |
+Each suite builds whatever platforms Docker Hub currently publishes for `debian:<suite>-slim`, resolved from the upstream manifest at build time rather than hardcoded — Debian's per-suite architecture support shifts as its release cycle rolls forward, especially for `oldstable` and `oldoldstable`. The uv image additionally always excludes `linux/arm/v5`, since neither Rust nor uv's release binaries target it.
 
 ## Tags
 
