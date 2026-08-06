@@ -14,12 +14,14 @@ env:
 
 jobs:
   resolve-version-base:
-    name: Resolve base version
+    name: Resolve base version and platforms
     runs-on: ubuntu-latest
     permissions:
       contents: read
     outputs:
       version: ${{ steps.version.outputs.value }}
+      base_matrix: ${{ steps.platforms.outputs.base_matrix }}
+      uv_matrix: ${{ steps.platforms.outputs.uv_matrix }}
     steps:
       - uses: actions/checkout@v7
 
@@ -32,6 +34,36 @@ jobs:
           version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
+      # debian:${SUITE}-slim's published platforms shift over time (especially for
+      # oldstable/oldoldstable, as Debian's release cycle rolls forward), so the
+      # matrix is resolved from the upstream manifest instead of hardcoded. The uv
+      # matrix additionally drops linux/arm/v5, which neither Rust nor uv's release
+      # binaries target regardless of what Debian publishes.
+      - name: Resolve platforms
+        id: platforms
+        run: |
+          set -eu
+          known='[
+            {"platform":"linux/amd64",   "runner":"ubuntu-latest",    "qemu":false, "arch":"amd64",   "variant":null},
+            {"platform":"linux/arm64",   "runner":"ubuntu-24.04-arm", "qemu":false, "arch":"arm64",   "variant":"v8"},
+            {"platform":"linux/arm/v7",  "runner":"ubuntu-24.04-arm", "qemu":true,  "arch":"arm",     "variant":"v7"},
+            {"platform":"linux/arm/v5",  "runner":"ubuntu-24.04-arm", "qemu":true,  "arch":"arm",     "variant":"v5"},
+            {"platform":"linux/386",     "runner":"ubuntu-latest",    "qemu":true,  "arch":"386",     "variant":null},
+            {"platform":"linux/ppc64le", "runner":"ubuntu-latest",    "qemu":true,  "arch":"ppc64le", "variant":null},
+            {"platform":"linux/riscv64", "runner":"ubuntu-latest",    "qemu":true,  "arch":"riscv64", "variant":null},
+            {"platform":"linux/s390x",   "runner":"ubuntu-latest",    "qemu":true,  "arch":"s390x",   "variant":null}
+          ]'
+
+          available=$(docker buildx imagetools inspect "debian:${SUITE}-slim" --raw \
+            | jq -c '[.manifests[].platform | select(.os == "linux") | {arch: .architecture, variant: (.variant // null)}]')
+
+          base=$(jq -nc --argjson known "$known" --argjson avail "$available" \
+            '{include: [$known[] | select(. as $k | $avail | any(.arch == $k.arch and .variant == $k.variant)) | {platform, runner, qemu}]}')
+          uv=$(jq -c '.include |= map(select(.platform != "linux/arm/v5"))' <<<"$base")
+
+          echo "base_matrix=$base" >> "$GITHUB_OUTPUT"
+          echo "uv_matrix=$uv" >> "$GITHUB_OUTPUT"
+
   build-base:
     name: Build base (${{ matrix.platform }})
     needs: resolve-version-base
@@ -40,15 +72,7 @@ jobs:
       contents: read
       packages: write
     strategy:
-      matrix:
-        include:
-          - { platform: linux/amd64,   runner: ubuntu-latest,    qemu: false }
-          - { platform: linux/arm64,   runner: ubuntu-24.04-arm, qemu: false }
-          - { platform: linux/arm/v7,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/arm/v5,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/386,     runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/ppc64le, runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/s390x,   runner: ubuntu-latest,    qemu: true  }
+      matrix: ${{ fromJson(needs.resolve-version-base.outputs.base_matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -77,9 +101,10 @@ jobs:
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
 
       - name: Export digest
         run: |
@@ -206,21 +231,13 @@ jobs:
 
   build-python:
     name: Build python (${{ matrix.platform }})
-    needs: resolve-version-python
+    needs: [resolve-version-python, resolve-version-base]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
     strategy:
-      matrix:
-        include:
-          - { platform: linux/amd64,   runner: ubuntu-latest,    qemu: false }
-          - { platform: linux/arm64,   runner: ubuntu-24.04-arm, qemu: false }
-          - { platform: linux/arm/v7,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/arm/v5,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/386,     runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/ppc64le, runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/s390x,   runner: ubuntu-latest,    qemu: true  }
+      matrix: ${{ fromJson(needs.resolve-version-base.outputs.base_matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -250,9 +267,10 @@ jobs:
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
 
       - name: Export digest
         run: |
@@ -391,20 +409,13 @@ jobs:
 
   build-uv:
     name: Build uv (${{ matrix.platform }})
-    needs: resolve-version-uv
+    needs: [resolve-version-uv, resolve-version-base]
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
       packages: write
     strategy:
-      matrix:
-        include:
-          - { platform: linux/amd64,   runner: ubuntu-latest,    qemu: false }
-          - { platform: linux/arm64,   runner: ubuntu-24.04-arm, qemu: false }
-          - { platform: linux/arm/v7,  runner: ubuntu-24.04-arm, qemu: true  }
-          - { platform: linux/386,     runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/ppc64le, runner: ubuntu-latest,    qemu: true  }
-          - { platform: linux/s390x,   runner: ubuntu-latest,    qemu: true  }
+      matrix: ${{ fromJson(needs.resolve-version-base.outputs.uv_matrix) }}
     steps:
       - uses: actions/checkout@v7
 
@@ -436,9 +447,10 @@ jobs:
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Prepare
+        env:
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          platform=${{ matrix.platform }}
-          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+          echo "PLATFORM_PAIR=${PLATFORM//\//-}" >> $GITHUB_ENV
 
       - name: Export digest
         run: |
