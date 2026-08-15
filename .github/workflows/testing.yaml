@@ -396,10 +396,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          tag=$(curl --proto '=https' --tlsv1.2 -fsSL \
-              -H "Authorization: Bearer ${GH_TOKEN}" \
-              https://api.github.com/repos/astral-sh/uv/releases/latest \
-              | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+          tag=$(gh api repos/astral-sh/uv/releases/latest --jq .tag_name)
           if [ -z "$tag" ]; then
             echo "::error::failed to resolve uv release tag" >&2
             exit 1
