@@ -1,4 +1,4 @@
-name: unstable
+name: oldoldstable-backports
 
 on:
   schedule:
@@ -7,11 +7,11 @@ on:
 
 env:
   REPOSITORY: debian
-  SUITE: unstable
-  FLAVOR_SUFFIX: ""
-  BASE_TAG: unstable
-  PYTHON_TAG: unstable-python
-  UV_TAG: unstable-uv
+  SUITE: oldoldstable
+  FLAVOR_SUFFIX: -backports
+  BASE_TAG: oldoldstable-backports
+  PYTHON_TAG: oldoldstable-backports-python
+  UV_TAG: oldoldstable-backports-uv
 
 jobs:
   resolve-version-base:

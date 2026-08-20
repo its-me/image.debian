@@ -1,4 +1,4 @@
-name: unstable
+name: stable-slim
 
 on:
   schedule:
@@ -7,11 +7,11 @@ on:
 
 env:
   REPOSITORY: debian
-  SUITE: unstable
-  FLAVOR_SUFFIX: ""
-  BASE_TAG: unstable
-  PYTHON_TAG: unstable-python
-  UV_TAG: unstable-uv
+  SUITE: stable
+  FLAVOR_SUFFIX: -slim
+  BASE_TAG: slim
+  PYTHON_TAG: slim-python
+  UV_TAG: slim-uv
 
 jobs:
   resolve-version-base:

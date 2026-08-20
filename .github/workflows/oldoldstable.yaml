@@ -8,6 +8,7 @@ on:
 env:
   REPOSITORY: debian
   SUITE: oldoldstable
+  FLAVOR_SUFFIX: ""
   BASE_TAG: oldoldstable
   PYTHON_TAG: oldoldstable-python
   UV_TAG: oldoldstable-uv
@@ -30,11 +31,12 @@ jobs:
         run: |
           template=$(awk '$1=="FROM"{img=$2} END{print img}' Dockerfile)
           image=${template//\$\{SUITE\}/$SUITE}
+          image=${image//\$\{FLAVOR_SUFFIX\}/$FLAVOR_SUFFIX}
           docker pull "$image"
           version=$(docker run --rm "$image" sh -c '. /etc/os-release && echo "$VERSION_CODENAME"')
           echo "value=$version" >> "$GITHUB_OUTPUT"
 
-      # debian:${SUITE}-slim's published platforms shift over time (especially for
+      # debian:${SUITE}${FLAVOR_SUFFIX}'s published platforms shift over time (especially for
       # oldstable/oldoldstable, as Debian's release cycle rolls forward), so the
       # matrix is resolved from the upstream manifest instead of hardcoded. The uv
       # matrix additionally drops linux/arm/v5, which neither Rust nor uv's release
@@ -54,7 +56,7 @@ jobs:
             {"platform":"linux/s390x",   "runner":"ubuntu-latest",    "qemu":true,  "arch":"s390x",   "variant":null}
           ]'
 
-          available=$(docker buildx imagetools inspect "debian:${SUITE}-slim" --raw \
+          available=$(docker buildx imagetools inspect "debian:${SUITE}${FLAVOR_SUFFIX}" --raw \
             | jq -c '[.manifests[].platform | select(.os == "linux") | {arch: .architecture, variant: (.variant // null)}]')
 
           base=$(jq -nc --argjson known "$known" --argjson avail "$available" \
@@ -97,6 +99,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             SUITE=${{ env.SUITE }}
+            FLAVOR_SUFFIX=${{ env.FLAVOR_SUFFIX }}
             VERSION=${{ needs.resolve-version-base.outputs.version }}
           outputs: type=image,name=ghcr.io/its-me/${{ env.REPOSITORY }},push-by-digest=true,name-canonical=true,push=true
 
