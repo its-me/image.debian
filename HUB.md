@@ -2,7 +2,7 @@
 
 # Debian Container Images
 
-Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable`, since Debian doesn't maintain a backports pocket for it.
+Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable` or `oldoldstable`, since Debian doesn't maintain a live backports pocket for either (backports are only maintained for the current `stable` and, during its transition window, `oldstable`).
 
 ## Images
 
@@ -26,7 +26,6 @@ docker pull 1tsme/debian:oldstable-slim
 docker pull 1tsme/debian:oldstable-backports
 docker pull 1tsme/debian:oldoldstable
 docker pull 1tsme/debian:oldoldstable-slim
-docker pull 1tsme/debian:oldoldstable-backports
 ```
 
 ### Python
@@ -67,7 +66,7 @@ Each suite/flavor builds whatever platforms Docker Hub currently publishes for `
 | `python` | `stable` Python image, default flavor |
 | `uv` | `stable` uv image, default flavor |
 | `uv-<uv version>` | `stable` uv image, default flavor, stamped with the bundled uv release (e.g. `uv-0.11.32`) |
-| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim`, `oldoldstable-backports` |
+| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim` |
 | `<label>-python` | Python image for `<label>` |
 | `<label>-uv` | uv image for `<label>` |
 | `<label>-uv-<uv version>` | uv image for `<label>`, stamped with the bundled uv release |

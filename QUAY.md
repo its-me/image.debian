@@ -1,6 +1,6 @@
 # Debian Container Images
 
-Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable`, since Debian doesn't maintain a backports pocket for it.
+Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable` or `oldoldstable`, since Debian doesn't maintain a live backports pocket for either (backports are only maintained for the current `stable` and, during its transition window, `oldstable`).
 
 ## Images
 
@@ -24,7 +24,6 @@ docker pull quay.io/itsme/debian:oldstable-slim
 docker pull quay.io/itsme/debian:oldstable-backports
 docker pull quay.io/itsme/debian:oldoldstable
 docker pull quay.io/itsme/debian:oldoldstable-slim
-docker pull quay.io/itsme/debian:oldoldstable-backports
 ```
 
 ### Python
@@ -68,7 +67,7 @@ Each suite/flavor builds whatever platforms Docker Hub currently publishes for `
 | `uv` | `stable` uv image, default flavor |
 | `uv-YYMMDD` | date-stamped `stable` uv image, default flavor |
 | `uv-<uv version>` | `stable` uv image, default flavor, stamped with the bundled uv release (e.g. `uv-0.11.32`) |
-| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim`, `oldoldstable-backports` |
+| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim` |
 | `<label>-YYMMDD` | date-stamped base image for `<label>` |
 | `<label>-python` | Python image for `<label>` |
 | `<label>-python-YYMMDD` | date-stamped Python image for `<label>` |

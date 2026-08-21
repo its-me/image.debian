@@ -1,10 +1,10 @@
 # Debian Container Images
 
-Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable`, since Debian doesn't maintain a backports pocket for it.
+Debian container images built on the official images, published daily, across five Debian suites (`stable`, `testing`, `unstable`, `oldstable`, `oldoldstable`), each in up to three flavors: the default (full) image, `slim`, and `backports` — `backports` isn't published for `unstable` or `oldoldstable`, since Debian doesn't maintain a live backports pocket for either (backports are only maintained for the current `stable` and, during its transition window, `oldstable`).
 
 ## Workflow
 
-- Each suite/flavor combination has its own workflow (`.github/workflows/{stable,stable-slim,stable-backports,testing,...}.yaml`, 14 files total), all built from the same three Dockerfiles — the suite, base image flavor suffix, and derived tags are passed in as build-args/env (`SUITE`, `FLAVOR_SUFFIX`, `BASE_TAG`, `PYTHON_TAG`) rather than hardcoded
+- Each suite/flavor combination has its own workflow (`.github/workflows/{stable,stable-slim,stable-backports,testing,...}.yaml`, 13 files total), all built from the same three Dockerfiles — the suite, base image flavor suffix, and derived tags are passed in as build-args/env (`SUITE`, `FLAVOR_SUFFIX`, `BASE_TAG`, `PYTHON_TAG`) rather than hardcoded
 - There's no upstream release to tie a version to, so every trigger rebuilds and republishes
 - The build matrix for each suite/flavor is resolved from `debian:<suite><flavor-suffix>`'s upstream manifest at run time rather than hardcoded — see [Platforms](#platforms)
 - Each image carries an `org.opencontainers.image.version` label set to the underlying Debian release codename (e.g. `trixie`, visible via `docker inspect`)
@@ -31,7 +31,6 @@ docker pull ghcr.io/its-me/debian:oldstable-slim
 docker pull ghcr.io/its-me/debian:oldstable-backports
 docker pull ghcr.io/its-me/debian:oldoldstable
 docker pull ghcr.io/its-me/debian:oldoldstable-slim
-docker pull ghcr.io/its-me/debian:oldoldstable-backports
 ```
 
 ### Python
@@ -81,7 +80,7 @@ Each suite/flavor builds whatever platforms Docker Hub currently publishes for `
 | `uv` | `stable` uv image, default flavor |
 | `uv-YYMMDD` | date-stamped `stable` uv image, default flavor |
 | `uv-<uv version>` | `stable` uv image, default flavor, stamped with the bundled uv release (e.g. `uv-0.11.32`) |
-| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim`, `oldoldstable-backports` |
+| `<label>` | base image for `<label>` — `slim`, `backports`; `testing`, `testing-slim`, `testing-backports`; `unstable`, `unstable-slim`; `oldstable`, `oldstable-slim`, `oldstable-backports`; `oldoldstable`, `oldoldstable-slim` |
 | `<label>-YYMMDD` | date-stamped base image for `<label>` |
 | `<label>-python` | Python image for `<label>` |
 | `<label>-python-YYMMDD` | date-stamped Python image for `<label>` |
